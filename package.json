@@ -1,0 +1,18 @@
+{
+  "name": "marswalk-jezero",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interplanetary Survival Guide: Martian Map — NASA Space Apps 2026",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "three": "^0.180.0"
+  }
+}
