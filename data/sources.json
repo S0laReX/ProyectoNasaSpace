@@ -1,0 +1,29 @@
+[
+  {
+    "url": "https://firms.modaps.eosdis.nasa.gov/data/active_fire/modis-c6.1/csv/MODIS_C6_1_South_America_7d.csv",
+    "downloaded_utc": "2026-11-14T12:39:46.126540+00:00",
+    "sha256": "e541d5f374e5828e7fa74ce0780bc3458fcc44f13182e58a484759e239c11a4b",
+    "south_america_rows": 16771,
+    "regional_rows": 0,
+    "type": "NASA FIRMS NRT 7-day sample, not historical archive",
+    "sensor": "modis"
+  },
+  {
+    "url": "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_South_America_7d.csv",
+    "downloaded_utc": "2026-11-14T12:39:51.702413+00:00",
+    "sha256": "86084aae1cdcd3be706d17dda8c640cb3bda1722e7cea2850da04e34e4f61c73",
+    "south_america_rows": 61137,
+    "regional_rows": 0,
+    "type": "NASA FIRMS NRT 7-day sample, not historical archive",
+    "sensor": "noaa20"
+  },
+  {
+    "url": "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-21-viirs-c2/csv/J2_VIIRS_C2_South_America_7d.csv",
+    "downloaded_utc": "2026-11-14T12:39:57.891320+00:00",
+    "sha256": "61d46045b99853f6f06b3d4a3a578322343c5df967af5058b4606ffe1c1aeb2a",
+    "south_america_rows": 59505,
+    "regional_rows": 1,
+    "type": "NASA FIRMS NRT 7-day sample, not historical archive",
+    "sensor": "noaa21"
+  }
+]

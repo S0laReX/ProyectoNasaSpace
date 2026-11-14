@@ -1,0 +1,89 @@
+# Tunari Fuego: React + TypeScript + Vite / FastAPI + Python
+# Las reglas de directorio también se aplican a subproyectos.
+
+# Node.js: dependencias, cachés y resultados de compilación
+node_modules/
+dist/
+dist-ssr/
+.vite/
+.vite-temp/
+.cache/
+.npm/
+.pnpm-store/
+*.tsbuildinfo
+*.local
+
+# Python: entornos, bytecode, empaquetado y herramientas
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+*.egg-info/
+*.egg
+.eggs/
+.Python
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.pyre/
+.tox/
+.nox/
+.hypothesis/
+.ipynb_checkpoints/
+
+# Cobertura y resultados de pruebas
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+coverage.xml
+junit.xml
+test-results/
+playwright-report/
+blob-report/
+
+# Secretos locales; conservar la plantilla sin credenciales
+.env
+.env.*
+!.env.example
+.envrc
+
+# Descargas e importaciones locales (conservar muestra y capas públicas)
+/data/uploads/
+/data/raw/
+/data/coverage.csv
+
+# Capturas generadas durante la verificación; no son recursos de la web
+/preview.jpg
+/integrations-preview.jpg
+
+# Archivos de ejecución, temporales y del sistema
+*.log
+*.pid
+*.pid.lock
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Configuración personal de editores
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# Se versionan package-lock.json y requirements.lock.txt para reproducibilidad.
+# También se versionan src/, api/, tests/, data/observations.csv y data/layers/.
