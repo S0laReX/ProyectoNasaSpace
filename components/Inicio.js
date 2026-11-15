@@ -1,5 +1,5 @@
 'use client';
-import Escena from './Escena';
+import Escena, { PEDIR_PLANIFICAR } from './Escena';
 import Revelar from './Revelar';
 import ProgresoScroll from './ProgresoScroll';
 import { SelectorIdioma, useIdioma } from './Idioma';
@@ -23,7 +23,13 @@ export default function Inicio() {
           <a href="#datos">{t('nav.datos')}</a>
         </div>
         <SelectorIdioma />
-        <a href="#inicio" className="boton primario">{t('nav.planificar')}</a>
+        <a
+          href="#inicio"
+          className="boton primario"
+          onClick={(e) => { e.preventDefault(); window.dispatchEvent(new Event(PEDIR_PLANIFICAR)); }}
+        >
+          {t('nav.planificar')}
+        </a>
         <ProgresoScroll />
       </nav>
 

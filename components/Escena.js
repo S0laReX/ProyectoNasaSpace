@@ -15,6 +15,8 @@ import { useIdioma } from './Idioma';
 //   → acercamiento (Leaflet vuela a la zona de EVA) → mapa (la interfaz entra escalonada)
 // y de vuelta con Vista orbital: alejamiento → fundido → ascenso → orbita.
 const PREFERENCIA = 'marswalk.sitio';
+// Evento de ventana que lanza el botón "Planificar EVA" de la navegación: lleva al mapa y activa el trazado.
+export const PEDIR_PLANIFICAR = 'marswalk:planificar';
 const FUNDIDO_MS = 600;
 
 // Entrada de la portada: el título (hero.titulo) sube palabra por palabra detrás de una máscara y el resto le sigue.
@@ -185,6 +187,19 @@ export default function Escena() {
     return () => window.removeEventListener('keydown', alTecla);
   }, [fase, saltar]);
 
+  // "Planificar EVA" (navegación): sube a la escena, salta directo al mapa si hace falta y pide
+  // al planificador que entre en modo trazado. Cada pedido incrementa el contador.
+  const [pedidoTrazar, setPedidoTrazar] = useState(0);
+  useEffect(() => {
+    const alPedir = () => {
+      escena.current?.scrollIntoView({ behavior: reducido.current ? 'auto' : 'smooth', block: 'start' });
+      if (fase !== 'mapa') saltar();
+      setPedidoTrazar((n) => n + 1);
+    };
+    window.addEventListener(PEDIR_PLANIFICAR, alPedir);
+    return () => window.removeEventListener(PEDIR_PLANIFICAR, alPedir);
+  }, [fase, saltar]);
+
   const enMapa = fase === 'mapa';
   const hayGlobo = ['orbita', 'descenso', 'subida', 'ascenso'].includes(fase);
 
@@ -195,7 +210,7 @@ export default function Escena() {
       <div className="escena-capa-mapa" id="mapa" inert={!enMapa}>
         <h2 className="visually-hidden">{t('hero.mapaTitulo')}</h2>
         <p className="visually-hidden">{t('hero.mapaAyuda')}</p>
-        <Planificador activo={enMapa} onMapa={alMapa} onVistaOrbital={vistaOrbital} />
+        <Planificador activo={enMapa} onMapa={alMapa} onVistaOrbital={vistaOrbital} pedidoTrazar={pedidoTrazar} />
       </div>
 
       <div className={`escena-capa-globo ${hayGlobo ? '' : 'oculto'}`}>

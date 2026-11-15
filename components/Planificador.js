@@ -24,7 +24,7 @@ const UMBRALES = { a: UMBRAL_PRECAUCION, b: EVA.pendienteMaxGrados };
 const ORDEN = ['ok', 'info', 'alerta', 'critico'];
 const fmtKm = (km) => (km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(2)} km`);
 
-export default function Planificador({ activo = true, onMapa, onVistaOrbital }) {
+export default function Planificador({ activo = true, onMapa, onVistaOrbital, pedidoTrazar = 0 }) {
   const { t } = useIdioma();
   const [rover, setRover] = useState(null);
   const [errorRover, setErrorRover] = useState(null);
@@ -56,6 +56,9 @@ export default function Planificador({ activo = true, onMapa, onVistaOrbital }) 
     document.addEventListener('fullscreenchange', alCambiar);
     return () => document.removeEventListener('fullscreenchange', alCambiar);
   }, []);
+
+  // El botón "Planificar EVA" de la navegación pide entrar en modo trazado.
+  useEffect(() => { if (pedidoTrazar) setPlanificando(true); }, [pedidoTrazar]);
 
   const agregarPunto = useCallback((p) => setRuta((r) => [...r, p]), []);
   const elegirWaypoint = useCallback((w) => setWaypoint(w), []);
