@@ -1,0 +1,62 @@
+/* Marswalk: consola de campo. Neutros teñidos de óxido (tono 45), un acento azul de carta, tríada de seguridad validada para daltonismo. */
+:root {
+  color-scheme: dark;
+  /* Espaciado, base 4 px */
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 32px; --space-2xl: 48px; --space-3xl: 64px; --space-4xl: 96px;
+  /* Tipo: escala fija 1.2 para la interfaz; titulares fluidos solo en las secciones de lectura */
+  --text-xs: 0.8125rem; --text-sm: 0.9375rem; --text-md: 1rem; --text-lg: 1.125rem; --text-xl: 1.375rem; --text-2xl: 1.625rem; --text-3xl: 2rem;
+  --text-display-s: clamp(2rem, 2.5vw + 1rem, 3rem); --text-display: clamp(2.5rem, 3.5vw + 1rem, 4.25rem);
+  --text-section: clamp(1.75rem, 1.6vw + 1rem, 2.75rem); --text-title: clamp(1.125rem, 0.5vw + 0.9rem, 1.375rem); --text-lead: clamp(1.0625rem, 0.3vw + 1rem, 1.25rem);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms; --dur-fundido: 600ms;
+  --container: 1440px; --gutter: 64px; --gap-columns: 32px; --section-gap-s: 112px; --section-gap: 144px; --section-gap-l: 176px;
+  --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
+  /* Superficies: cielo nocturno azul marino (tono 262), como las apps de NASA sobre Marte.
+     El fondo oscuro y frío reduce el deslumbramiento en el hábitat y deja que Marte (cálido) resalte. */
+  --color-espacio: oklch(10.5% 0.022 268); /* espacio profundo, detrás del planeta */
+  --color-paper: oklch(14.5% 0.022 264);   /* fondo de consola */
+  --color-paper-2: oklch(18.5% 0.026 262); /* paneles */
+  --color-paper-3: oklch(23% 0.03 260);    /* selección, fichas */
+  --color-rule: oklch(34% 0.032 258);
+  --color-rule-2: oklch(27% 0.028 260);
+  /* Tinta: blanco frío, máxima claridad sobre el azul */
+  --color-ink: oklch(95% 0.008 250); --color-ink-2: oklch(85% 0.016 250); --color-muted: oklch(73% 0.022 252);
+  /* Acción: azul NASA aclarado (confianza, tecnología). Es lo único que se pulsa, se elige o tiene foco. */
+  --color-accent: oklch(74% 0.115 252); --color-accent-2: oklch(83% 0.08 252); --color-accent-ink: oklch(15% 0.03 262); --color-focus: oklch(83% 0.08 252);
+  /* Identidad: óxido marciano (exploración, calidez). Solo en la marca y en titulares grandes de la portada;
+     nunca en controles ni en el mapa, para no competir con la tríada de seguridad. */
+  --color-marte: oklch(68% 0.15 42);
+  --color-error: oklch(70% 0.17 22); --color-success: oklch(72% 0.12 165);
+  --font-display: var(--f-archivo, "Archivo"), ui-sans-serif, sans-serif;
+  --font-body: var(--f-atkinson, "Atkinson Hyperlegible Next"), var(--f-archivo, "Archivo"), ui-sans-serif, sans-serif;
+  --font-outlier: var(--f-archivo, "Archivo"), ui-sans-serif, sans-serif;
+  --radius-card: 2px; --radius-control: 2px; --radius-pill: 2px; --rule-hair: 1px;
+  --shadow-card: none;
+  --tracking-display: -0.005em; --display-weight: 600; --display-stretch: 82%;
+  --control-alto: 48px; /* uso con guantes */
+  --grain: 0;
+  /* Seguridad (datos, no decoración). Siempre acompañados de trama, icono y texto. ΔE mínimo en daltonismo: 9.4 */
+  --color-zona-seguro: oklch(66% 0.12 165); --color-zona-precaucion: oklch(66% 0.15 72); --color-zona-peligro: oklch(58% 0.2 22); --color-zona-sd: oklch(56% 0.02 250);
+  --color-ruta: oklch(97% 0.01 80); --color-ruta-casing: oklch(12% 0.02 264); --color-rover: oklch(73% 0.022 252);
+  --color-scrim: oklch(14.5% 0.022 264 / 0.88);
+  /* Cielo de estrellas en CSS (páginas y bordes del mapa). Tres teselas de tamaños sin múltiplo común,
+     en ciclo A-B-C, para que la repetición no se note. Fijo: sin parpadeo. */
+  --estrellas:
+    radial-gradient(circle at 37px 52px, oklch(97% 0.01 250 / 0.85) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 90px 330px, oklch(97% 0.01 250 / 0.7) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 150px 500px, oklch(93% 0.04 70 / 0.95) 0 1.5px, transparent 2.2px),
+    radial-gradient(circle at 211px 140px, oklch(97% 0.01 250 / 0.6) 0 0.8px, transparent 1.4px),
+    radial-gradient(circle at 300px 80px, oklch(91% 0.04 250 / 0.9) 0 1.3px, transparent 2px),
+    radial-gradient(circle at 520px 120px, oklch(97% 0.01 250 / 0.7) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 120px 250px, oklch(97% 0.01 250 / 0.75) 0 1.1px, transparent 1.7px),
+    radial-gradient(circle at 420px 260px, oklch(97% 0.01 250 / 0.6) 0 0.8px, transparent 1.4px),
+    radial-gradient(circle at 40px 390px, oklch(97% 0.01 250 / 0.55) 0 0.8px, transparent 1.4px),
+    radial-gradient(circle at 260px 20px, oklch(97% 0.01 250 / 0.5) 0 0.7px, transparent 1.3px),
+    radial-gradient(circle at 180px 430px, oklch(97% 0.01 250 / 0.65) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 330px 590px, oklch(95% 0.03 80 / 0.75) 0 1.1px, transparent 1.7px),
+    radial-gradient(circle at 75px 190px, oklch(97% 0.01 250 / 0.55) 0 0.8px, transparent 1.4px),
+    radial-gradient(circle at 380px 400px, oklch(97% 0.01 250 / 0.5) 0 0.7px, transparent 1.3px),
+    radial-gradient(circle at 600px 330px, oklch(97% 0.01 250 / 0.5) 0 0.7px, transparent 1.3px);
+  --estrellas-tam: 293px 293px, 461px 461px, 617px 617px;
+}
