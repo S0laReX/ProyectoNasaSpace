@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useIdioma } from './Idioma';
 
 // Perfil de elevación de la ruta. Con modelo de terreno usa la elevación del DTM CTX y
 // colorea cada tramo según su pendiente; sin él, la elevación de los waypoints del rover.
@@ -8,6 +9,7 @@ const AL = 128;
 const M = { i: 40, d: 8, s: 10, b: 22 };
 
 export default function Perfil({ perfil, conTerreno = false }) {
+  const { t } = useIdioma();
   const [hover, setHover] = useState(null);
   const pts = perfil.filter((p) => p.elev != null);
   if (pts.length < 2) return null;
@@ -34,9 +36,9 @@ export default function Perfil({ perfil, conTerreno = false }) {
 
   return (
     <figure className="perfil">
-      <figcaption>Perfil de elevación <span className="nota">en metros, {conTerreno ? 'modelo de terreno CTX' : 'referencia del rover'}</span></figcaption>
+      <figcaption>{t('perfil.titulo')} <span className="nota">{t('perfil.unidades', { modelo: conTerreno })}</span></figcaption>
       <div className="perfil-lienzo">
-        <svg viewBox={`0 0 ${AN} ${AL}`} role="img" aria-label={`Elevación entre ${eMin.toFixed(0)} y ${eMax.toFixed(0)} m a lo largo de ${kmMax.toFixed(2)} km`}
+        <svg viewBox={`0 0 ${AN} ${AL}`} role="img" aria-label={t('perfil.aria', { min: eMin.toFixed(0), max: eMax.toFixed(0), km: kmMax.toFixed(2) })}
           onMouseLeave={() => setHover(null)}
           onMouseMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
@@ -65,7 +67,7 @@ export default function Perfil({ perfil, conTerreno = false }) {
         {hover && (
           <div className="tooltip" style={{ left: `${(x(hover.km) / AN) * 100}%` }}>
             <b>{hover.km.toFixed(2)} km</b>, {hover.elev.toFixed(0)} m
-            {hover.pendiente != null && <div>Pendiente {hover.pendiente.toFixed(1)}°</div>}
+            {hover.pendiente != null && <div>{t('perfil.pendiente')} {hover.pendiente.toFixed(1)}°</div>}
           </div>
         )}
       </div>

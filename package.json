@@ -6,13 +6,20 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "eslint app components lib scripts"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
+    "motion": "14.9.0",
     "next": "^15.5.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "3.3.7",
+    "eslint": "9.39.5",
+    "eslint-config-next": "15.5.28"
   }
 }

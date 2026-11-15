@@ -2,6 +2,7 @@
 import { useEffect, useImperativeHandle, useRef } from 'react';
 import { ETIQUETAS_ESCALA, JEZERO, TESELA_VIKING, TEXTURA_GLOBO } from '../lib/marte';
 import { tiempoMarte } from '../lib/tiempo-marte';
+import { useIdioma } from './Idioma';
 
 // Globo de Marte en Three.js con la textura Viking de Mars Trek.
 // No es un fondo decorativo: es el primer tramo del mapa. `descender()` lleva la cámara
@@ -28,6 +29,7 @@ export function alturaParaZoom(zoom, altoPx) {
 }
 
 export default function Globo({ ref, interactivo = false, onElegir }) {
+  const { t } = useIdioma();
   const contenedor = useRef(null);
   const motor = useRef(null);
   const props = useRef({ interactivo, onElegir });
@@ -147,18 +149,9 @@ export default function Globo({ ref, interactivo = false, onElegir }) {
         return { ...nave, r, plano, linea, nave3d, fase: Math.random() * Math.PI * 2, nodoEtq: el.querySelector(`[data-nave="${nave.id}"]`) };
       });
 
-      // Cielo: muchas estrellas tenues y unas pocas brillantes, fijas.
-      const estrellas = new THREE.Group();
-      for (const [cantidad, tam, op] of [[lento ? 500 : 1300, 0.11, 0.45], [lento ? 60 : 140, 0.22, 0.8]]) {
-        const posiciones = new Float32Array(cantidad * 3);
-        for (let i = 0; i < cantidad; i++) {
-          const v = new THREE.Vector3().randomDirection().multiplyScalar(60 + Math.random() * 40);
-          posiciones.set([v.x, v.y, v.z], i * 3);
-        }
-        const geom = new THREE.BufferGeometry();
-        geom.setAttribute('position', new THREE.BufferAttribute(posiciones, 3));
-        estrellas.add(new THREE.Points(geom, new THREE.PointsMaterial({ color: 0xede7df, size: tam, transparent: true, opacity: op })));
-      }
+      // Cielo: estrellas redondas con el color de su temperatura (de blanco azulado a anaranjado),
+      // tres magnitudes y la franja tenue de la Vía Láctea. Sin parpadeo: solo la deriva lenta del bucle.
+      const estrellas = crearCielo(THREE, lento);
       escena.add(estrellas);
 
       // Rotación que deja Jezero en el centro con el norte arriba (Euler XYZ: primero Y, luego X).
@@ -176,11 +169,15 @@ export default function Globo({ ref, interactivo = false, onElegir }) {
         const p = latLonAVector(THREE, 0, subsolar.lon - 35, 1);
         return Math.atan2(-p.x, p.z);
       }
-      let jezeroEnPantalla = null; // posición en pantalla del cráter, para elegirlo con un toque
       const estado = {
         altura: ALTURA_ORBITA, giro: giroDeDia(), rotX: 0.12, desvio: 0, luz: 0, estirar: 0,
+        realce: 0, realceObjetivo: 0, // el planeta se eleva un poco bajo el puntero: "se puede tocar"
+        entrada: 0, tiempo: 0,        // entrada atmosférica del descenso: resplandor y vibración
         anim: null, activo: true, ancho: 1, alto: 1,
       };
+      // Opacidad de cada capa de estrellas, para apagarlas al entrar en la atmósfera.
+      for (const capa of estrellas.children) capa.userData.opacidad = capa.material.opacity;
+      const pista = el.querySelector('.globo-pista');
 
       const redimensionar = () => {
         const { clientWidth: w, clientHeight: h } = el;
@@ -205,12 +202,21 @@ export default function Globo({ ref, interactivo = false, onElegir }) {
       const dibujar = () => {
         const { ancho: w, alto: h } = estado;
         grupo.rotation.set(estado.rotX, estado.giro, 0);
+        const escala = 1 + 0.035 * estado.realce;
+        grupo.scale.setScalar(escala);
+        atmosfera.scale.setScalar(escala);
         camara.position.set(0, 0, 1 + estado.altura);
-        camara.setViewOffset(w, h, -estado.desvio * w, 0, w, h);
+        // Vibración leve durante la entrada atmosférica (en píxeles de pantalla).
+        const tt = estado.tiempo;
+        const sx = (Math.sin(tt * 83) + Math.sin(tt * 51)) * 2.2 * estado.entrada;
+        const sy = (Math.sin(tt * 71) + Math.sin(tt * 43)) * 2.2 * estado.entrada;
+        camara.setViewOffset(w, h, -estado.desvio * w + sx, sy, w, h);
         // Hacia la llegada: luz plana como las teselas del mapa, sin halo y con el estiramiento equirectangular.
         ambiente.intensity = 0.35 + 0.65 * estado.luz;
         sol.intensity = 2.2 * (1 - estado.luz);
-        atmosfera.material.uniforms.fuerza.value = 1 - estado.luz;
+        atmosfera.material.uniforms.fuerza.value = (1 + 0.7 * estado.realce + 1.6 * estado.entrada) * (1 - estado.luz);
+        for (const capa of estrellas.children) capa.material.opacity = capa.userData.opacidad * (1 - 0.8 * estado.entrada) * (1 - estado.luz);
+        el.style.setProperty('--entrada', estado.entrada.toFixed(3));
         anillo.material.opacity = 1 - estado.luz;
         renderer.domElement.style.transform = `scaleX(${1 + (ESTIRAMIENTO - 1) * estado.estirar})`;
         sol.position.copy(dirSol).applyEuler(grupo.rotation).multiplyScalar(5);
@@ -242,7 +248,6 @@ export default function Globo({ ref, interactivo = false, onElegir }) {
           v.project(camara);
           const x = ((v.x + 1) / 2) * w;
           const y = ((1 - v.y) / 2) * h;
-          if (e.id === 'crater') jezeroEnPantalla = { x, y, deFrente };
           e.nodo.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
           e.nodo.style.opacity = visible ? '1' : '0';
         }
@@ -254,10 +259,24 @@ export default function Globo({ ref, interactivo = false, onElegir }) {
       const vel = { x: 0, y: 0 };
       let ultimoToque = -Infinity;
       const K = 0.0055;
-      const cercaDeJezero = (e) => {
-        if (!jezeroEnPantalla?.deFrente) return false;
+      // ¿El puntero está sobre el planeta? Un rayo desde la cámara contra la esfera (radio 1, escalada).
+      const rayo = new THREE.Raycaster();
+      const ndc = new THREE.Vector2();
+      const esfera = new THREE.Sphere(new THREE.Vector3(), 1);
+      const sobrePlaneta = (e) => {
         const caja = el.getBoundingClientRect();
-        return Math.hypot(e.clientX - caja.left - jezeroEnPantalla.x, e.clientY - caja.top - jezeroEnPantalla.y) < 28;
+        ndc.set(((e.clientX - caja.left) / caja.width) * 2 - 1, -((e.clientY - caja.top) / caja.height) * 2 + 1);
+        rayo.setFromCamera(ndc, camara);
+        esfera.radius = grupo.scale.x;
+        return rayo.ray.intersectsSphere(esfera);
+      };
+      const marcarSobre = (e, sobre) => {
+        estado.realceObjetivo = sobre ? 1 : 0;
+        el.classList.toggle('sobre-planeta', sobre);
+        if (pista) {
+          const caja = el.getBoundingClientRect();
+          pista.style.transform = `translate3d(${(e.clientX - caja.left).toFixed(0)}px, ${(e.clientY - caja.top).toFixed(0)}px, 0)`;
+        }
       };
       const alBajar = (e) => {
         if (!props.current.interactivo || estado.anim) return;
@@ -266,9 +285,11 @@ export default function Globo({ ref, interactivo = false, onElegir }) {
         vel.x = vel.y = 0;
         el.classList.add('arrastrando');
       };
+      const alSalir = () => { estado.realceObjetivo = 0; el.classList.remove('sobre-planeta'); };
       const alMover = (e) => {
-        if (!props.current.interactivo) return;
-        if (!arrastre.activo) { el.classList.toggle('sobre-sitio', cercaDeJezero(e)); return; }
+        if (!props.current.interactivo || estado.anim) return;
+        if (!arrastre.activo) { marcarSobre(e, e.pointerType !== 'touch' && sobrePlaneta(e)); return; }
+        if (arrastre.recorrido > 6) alSalir(); // arrastrando: no es un toque, se quita la pista
         const dx = e.clientX - arrastre.x;
         const dy = e.clientY - arrastre.y;
         arrastre.x = e.clientX;
@@ -285,8 +306,8 @@ export default function Globo({ ref, interactivo = false, onElegir }) {
         arrastre.activo = false;
         el.classList.remove('arrastrando');
         ultimoToque = performance.now();
-        // Un toque (sin arrastrar) sobre Jezero elige el sitio y empieza el descenso.
-        if (arrastre.recorrido < 6 && cercaDeJezero(e)) { vel.x = vel.y = 0; props.current.onElegir?.(); }
+        // Un toque (sin arrastrar) en cualquier parte del planeta empieza el descenso a Jezero.
+        if (arrastre.recorrido < 6 && sobrePlaneta(e)) { vel.x = vel.y = 0; alSalir(); props.current.onElegir?.(); }
       };
       const alTecla = (e) => {
         if (!props.current.interactivo) return;
@@ -304,6 +325,7 @@ export default function Globo({ ref, interactivo = false, onElegir }) {
       el.addEventListener('pointermove', alMover);
       el.addEventListener('pointerup', alSoltar);
       el.addEventListener('pointercancel', alSoltar);
+      el.addEventListener('pointerleave', alSalir);
       el.addEventListener('keydown', alTecla);
 
       let frame = 0;
@@ -311,6 +333,9 @@ export default function Globo({ ref, interactivo = false, onElegir }) {
       const bucle = () => {
         const dt = Math.min(reloj.getDelta(), 0.05);
         const ahora = performance.now();
+        estado.tiempo += dt;
+        // El realce sigue al puntero con un muelle corto (sin saltos al entrar o salir del planeta).
+        estado.realce += (estado.realceObjetivo - estado.realce) * (reducido ? 1 : 1 - Math.exp(-10 * dt));
         if (estado.anim) estado.anim(ahora);
         else if (!arrastre.activo) {
           if (!reducido && Math.abs(vel.x) + Math.abs(vel.y) > 1e-5) {
@@ -345,20 +370,28 @@ export default function Globo({ ref, interactivo = false, onElegir }) {
       });
 
       motor.current = {
-        descender({ zoom, duracion = 3200 }) {
+        // Descenso en cuatro tiempos:
+        //   impulso (la cámara toma distancia un instante) → giro hacia Jezero y caída exponencial →
+        //   entrada atmosférica (halo encendido, estrellas que se apagan, vibración leve) →
+        //   luz plana y estiramiento equirectangular para fundirse sin salto con el mapa.
+        descender({ zoom, duracion = 3400 }) {
           const desde = { ...estado };
           const hasta = llegada(zoom);
           const [la, lb] = [Math.log(desde.altura), Math.log(hasta.altura)];
+          estado.realceObjetivo = 0;
+          el.classList.remove('sobre-planeta');
           return animar(duracion, (t) => {
             const r = suave(entre(0, 0.6, t));
             estado.giro = desde.giro + (hasta.giro - desde.giro) * r;
             estado.rotX = desde.rotX + (objetivoX - desde.rotX) * r;
             estado.desvio = desde.desvio * (1 - suave(entre(0, 0.5, t)));
+            const impulso = 1 + 0.07 * Math.sin(Math.PI * entre(0, 0.14, t));
             // Escala exponencial: la altura se interpola en espacio logarítmico.
-            estado.altura = Math.exp(la + (lb - la) * cuarta(entre(0.08, 1, t)));
+            estado.altura = Math.exp(la + (lb - la) * cuarta(entre(0.1, 1, t))) * impulso;
+            estado.entrada = Math.sin(Math.PI * entre(0.38, 0.86, t)) ** 1.5;
             estado.luz = suave(entre(0.6, 1, t));
             estado.estirar = suave(entre(0.7, 1, t));
-          });
+          }).then(() => { estado.entrada = 0; dibujar(); });
         },
         ascender({ duracion = 2600 } = {}) {
           const desde = { ...estado };
@@ -374,7 +407,7 @@ export default function Globo({ ref, interactivo = false, onElegir }) {
         },
         colocarAbajo({ zoom }) {
           const hasta = llegada(zoom);
-          Object.assign(estado, { ...hasta, rotX: objetivoX, desvio: 0, luz: 1, estirar: 1, anim: null });
+          Object.assign(estado, { ...hasta, rotX: objetivoX, desvio: 0, luz: 1, estirar: 1, entrada: 0, realce: 0, realceObjetivo: 0, anim: null });
           dibujar();
         },
         pausar() {
@@ -414,6 +447,7 @@ export default function Globo({ ref, interactivo = false, onElegir }) {
         el.removeEventListener('pointermove', alMover);
         el.removeEventListener('pointerup', alSoltar);
         el.removeEventListener('pointercancel', alSoltar);
+        el.removeEventListener('pointerleave', alSalir);
         el.removeEventListener('keydown', alTecla);
         escena.traverse((o) => {
           o.geometry?.dispose();
@@ -435,11 +469,14 @@ export default function Globo({ ref, interactivo = false, onElegir }) {
       className={`globo ${interactivo ? 'globo-interactivo' : ''}`}
       role={interactivo ? 'application' : undefined}
       aria-hidden={interactivo ? undefined : 'true'}
-      aria-label={interactivo ? 'Globo de Marte. Arrastra o usa las flechas para girarlo; Intro desciende a Jezero.' : undefined}
+      aria-label={interactivo ? t('globo.aria') : undefined}
       tabIndex={interactivo ? 0 : -1}
     >
+      {/* Resplandor de entrada atmosférica: su opacidad la marca --entrada desde el bucle del globo */}
+      <span className="globo-entrada" aria-hidden="true" />
+      <span className="globo-pista" aria-hidden="true">{t('globo.pista')}</span>
       {ETIQUETAS_ESCALA.filter((e) => e.id !== 'zona').map((e) => (
-        <span key={e.id} className="etiqueta-escala" data-etq={e.id}>{e.texto}</span>
+        <span key={e.id} className="etiqueta-escala" data-etq={e.id}>{t(`etiquetas.${e.id}`)}</span>
       ))}
       <span className="etiqueta-nave" data-nave="mro">MRO</span>
       <span className="etiqueta-nave" data-nave="odyssey">Mars Odyssey</span>
@@ -455,6 +492,68 @@ function colorToken(nombre) {
   c.fillRect(0, 0, 1, 1);
   const [r, g, b] = c.getImageData(0, 0, 1, 1).data;
   return (r << 16) | (g << 8) | b;
+}
+
+// Colores de estrellas por temperatura (O/B azuladas … K/M anaranjadas) y su frecuencia aproximada a simple vista.
+const TONOS_ESTELARES = [
+  [[0.76, 0.84, 1.0], 0.1], [[0.88, 0.92, 1.0], 0.24], [[1.0, 1.0, 1.0], 0.36], [[1.0, 0.95, 0.86], 0.2], [[1.0, 0.84, 0.68], 0.1],
+];
+const tonoEstelar = () => {
+  let r = Math.random();
+  for (const [c, p] of TONOS_ESTELARES) { r -= p; if (r <= 0) return c; }
+  return TONOS_ESTELARES[2][0];
+};
+
+function crearCielo(THREE, lento) {
+  // Disco suave: núcleo nítido y halo corto, para que la estrella sea un punto y no un cuadrado.
+  const lienzo = document.createElement('canvas');
+  lienzo.width = lienzo.height = 32;
+  const ctx = lienzo.getContext('2d');
+  const g = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.28, 'rgba(255,255,255,0.85)');
+  g.addColorStop(0.55, 'rgba(255,255,255,0.18)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 32, 32);
+  const disco = new THREE.CanvasTexture(lienzo);
+  disco.colorSpace = THREE.SRGBColorSpace;
+
+  // Polo de la galaxia, inclinado respecto del ecuador marciano: la franja cruza el cielo en diagonal.
+  const polo = new THREE.Vector3(0.42, 0.82, 0.39).normalize();
+  const capa = (cantidad, tam, opacidad, enBanda) => {
+    const pos = new Float32Array(cantidad * 3);
+    const col = new Float32Array(cantidad * 3);
+    const v = new THREE.Vector3();
+    for (let i = 0; i < cantidad; i++) {
+      v.randomDirection();
+      if (enBanda) {
+        // Aplana hacia el plano galáctico; el resto aleatorio deja un borde difuso.
+        const h = v.dot(polo);
+        v.addScaledVector(polo, -h * (0.82 + Math.random() * 0.16)).normalize();
+      }
+      v.multiplyScalar(60 + Math.random() * 40);
+      pos.set([v.x, v.y, v.z], i * 3);
+      const [r, gg, b] = tonoEstelar();
+      const brillo = 0.5 + Math.random() * 0.5;
+      col.set([r * brillo, gg * brillo, b * brillo], i * 3);
+    }
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geom.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    return new THREE.Points(geom, new THREE.PointsMaterial({
+      size: tam, map: disco, vertexColors: true, transparent: true, opacity: opacidad, depthWrite: false, sizeAttenuation: true,
+    }));
+  };
+  const n = (x) => Math.round(lento ? x / 2 : x);
+  const cielo = new THREE.Group();
+  cielo.add(
+    capa(n(2400), 0.13, 0.42, true), // Vía Láctea: muchas, diminutas y tenues
+    capa(n(1400), 0.17, 0.7, false), // fondo de estrellas débiles
+    capa(n(240), 0.3, 0.9, false),   // medianas
+    capa(n(40), 0.52, 1, false),     // las pocas brillantes
+  );
+  return cielo;
 }
 
 function latLonAVector(THREE, lat, lon, r) {

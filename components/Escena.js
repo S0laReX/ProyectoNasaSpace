@@ -1,10 +1,13 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { m } from 'motion/react';
 import Globo from './Globo';
 import Planificador from './Planificador';
 import Telemetria from './Telemetria';
+import GuiaPacha from './GuiaPacha';
 import { CAPAS_BASE, ETIQUETAS_ESCALA, JEZERO, ZONA_EVA, ZOOM_FUNDIDO } from '../lib/marte';
 import { estacion, horaTexto, tiempoMarte } from '../lib/tiempo-marte';
+import { useIdioma } from './Idioma';
 
 // La experiencia principal en una sola escena: el planeta termina de acercarse y se convierte
 // en el mapa de trabajo. Fases:
@@ -13,6 +16,11 @@ import { estacion, horaTexto, tiempoMarte } from '../lib/tiempo-marte';
 // y de vuelta con Vista orbital: alejamiento → fundido → ascenso → orbita.
 const PREFERENCIA = 'marswalk.sitio';
 const FUNDIDO_MS = 600;
+
+// Entrada de la portada: el título (hero.titulo) sube palabra por palabra detrás de una máscara y el resto le sigue.
+const ENTRADA = { visible: { transition: { staggerChildren: 0.1, delayChildren: 0.15 } } };
+const PALABRA = { oculto: { y: '110%' }, visible: { y: '0%', transition: { duration: 0.9, ease: [0.19, 1, 0.22, 1] } } };
+const PIEZA = { oculto: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] } } };
 
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 const volar = (mapa, centro, zoom, duracion) => new Promise((listo) => {
@@ -24,12 +32,23 @@ const leerPreferencia = () => { try { return localStorage.getItem(PREFERENCIA); 
 const guardarPreferencia = (v) => { try { v ? localStorage.setItem(PREFERENCIA, v) : localStorage.removeItem(PREFERENCIA); } catch { /* sin almacenamiento */ } };
 
 export default function Escena() {
+  const { t, idioma } = useIdioma();
+  const tActual = useRef(t);
+  tActual.current = t;
+  const etiquetasMapa = useRef(null); // { L, marcadores: [{ id, marcador }] } para traducirlas al cambiar de idioma
   const [fase, setFase] = useState('orbita');
   const escena = useRef(null);
   const globo = useRef(null);
   const mapa = useRef(null);
   const ocupado = useRef(false);
   const reducido = useRef(false);
+  // Cada transición toma un turno. Si otra la reemplaza (p. ej. Saltar intro a mitad del
+  // descenso), la anterior ve que su turno caducó y no toca la fase al despertar.
+  const turno = useRef(0);
+  const [esperandoMapa, setEsperandoMapa] = useState(false);
+  const esperando = useRef(false);
+  esperando.current = esperandoMapa;
+  const saltarPendiente = useRef(false);
 
   // Centro que deja la zona de EVA en el medio del área visible, entre los paneles.
   const destino = useCallback(() => {
@@ -63,26 +82,40 @@ export default function Escena() {
   }, []);
 
   const iniciar = useCallback(async () => {
-    if (ocupado.current || !mapa.current) return;
+    if (ocupado.current) return;
+    // Leaflet todavía cargando: se recuerda el pedido y alMapa lo lanza en cuanto el mapa existe.
+    if (!mapa.current) { setEsperandoMapa(true); return; }
+    setEsperandoMapa(false);
     ocupado.current = true;
+    const mio = ++turno.current;
+    const vigente = () => turno.current === mio;
     const lento = reducido.current;
     // El globo termina centrado en JEZERO: el mapa espera en el mismo punto y escala.
     mapa.current.setView([JEZERO.lat, JEZERO.lon], ZOOM_FUNDIDO, { animate: false });
     precargar();
     setFase('descenso');
     await globo.current?.descender({ zoom: ZOOM_FUNDIDO, duracion: lento ? 0 : 3200 });
+    if (!vigente()) return;
     setFase('fundido');
     await esperar(lento ? 0 : FUNDIDO_MS);
+    if (!vigente()) return;
     globo.current?.pausar();
     setFase('acercamiento');
     await volar(mapa.current, destino(), ZONA_EVA.zoom, lento ? 0 : 2.6);
+    if (!vigente()) return;
     setFase('mapa');
     guardarPreferencia('jezero');
     ocupado.current = false;
   }, [destino, precargar]);
 
   const saltar = useCallback(() => {
-    if (!mapa.current) return;
+    // Mapa aún cargando: se recuerda el pedido y alMapa salta en cuanto existe.
+    if (!mapa.current) { saltarPendiente.current = true; return; }
+    saltarPendiente.current = false;
+    // Invalida cualquier transición en curso: su promesa puede no resolverse nunca
+    // (pausar() detiene la animación del globo) y no debe dejar `ocupado` trabado.
+    turno.current++;
+    ocupado.current = false;
     globo.current?.pausar();
     mapa.current.setView(destino(), ZONA_EVA.zoom, { animate: false });
     setFase('mapa');
@@ -92,15 +125,20 @@ export default function Escena() {
   const vistaOrbital = useCallback(async () => {
     if (ocupado.current || !mapa.current) return;
     ocupado.current = true;
+    const mio = ++turno.current;
+    const vigente = () => turno.current === mio;
     const lento = reducido.current;
     setFase('alejamiento');
     await volar(mapa.current, [JEZERO.lat, JEZERO.lon], ZOOM_FUNDIDO, lento ? 0 : 2.2);
+    if (!vigente()) return;
     globo.current?.colocarAbajo({ zoom: ZOOM_FUNDIDO });
     globo.current?.reanudar();
     setFase('subida');
     await esperar(lento ? 0 : FUNDIDO_MS);
+    if (!vigente()) return;
     setFase('ascenso');
     await globo.current?.ascender({ duracion: lento ? 0 : 2600 });
+    if (!vigente()) return;
     setFase('orbita');
     guardarPreferencia(null);
     ocupado.current = false;
@@ -110,12 +148,11 @@ export default function Escena() {
   const alMapa = useCallback((m, L) => {
     mapa.current = m;
     const capa = L.layerGroup().addTo(m);
-    for (const e of ETIQUETAS_ESCALA) {
-      L.marker([e.lat, e.lon], {
-        interactive: false, keyboard: false,
-        icon: L.divIcon({ className: `etiqueta-escala etiqueta-mapa etq-${e.id}`, html: e.texto, iconSize: null }),
-      }).addTo(capa);
-    }
+    const marcadores = ETIQUETAS_ESCALA.map((e) => ({
+      id: e.id,
+      marcador: L.marker([e.lat, e.lon], { interactive: false, keyboard: false, icon: iconoEtiqueta(L, e.id, tActual.current) }).addTo(capa),
+    }));
+    etiquetasMapa.current = { L, marcadores };
     // Etiquetas por escala: región, cráter, zona. Se cambia un atributo; el CSS decide qué se ve.
     const escala = () => {
       const z = m.getZoom();
@@ -123,8 +160,16 @@ export default function Escena() {
     };
     m.on('zoom', escala);
     escala();
-    if (reducido.current || leerPreferencia() === 'jezero') saltar();
-  }, [saltar]);
+    if (reducido.current || saltarPendiente.current || leerPreferencia() === 'jezero') saltar();
+    else if (esperando.current) iniciar();
+  }, [saltar, iniciar]);
+
+  // Las etiquetas de Leaflet se crean una vez: al cambiar de idioma se les cambia el icono.
+  useEffect(() => {
+    const e = etiquetasMapa.current;
+    if (!e) return;
+    for (const { id, marcador } of e.marcadores) marcador.setIcon(iconoEtiqueta(e.L, id, t));
+  }, [t]);
 
   useEffect(() => {
     reducido.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -144,10 +189,12 @@ export default function Escena() {
   const hayGlobo = ['orbita', 'descenso', 'subida', 'ascenso'].includes(fase);
 
   return (
-    <section id="inicio" ref={escena} className={`escena escena-${fase}`} data-escala="region" aria-label="Mapa de Jezero">
-      <h2 className="visually-hidden">Elige una capa, traza la ruta y revisa los riesgos.</h2>
-      <p className="visually-hidden">Las zonas ámbar y rojas marcan la pendiente medida desde órbita. Toca un punto del recorrido del rover para ver el terreno desde el suelo.</p>
+    <section id="inicio" ref={escena} className={`escena escena-${fase}`} data-escala="region" aria-label={t('hero.escena')}>
+      {/* El encabezado del mapa va dentro de su capa: en la órbita queda inerte y el primer
+          encabezado accesible es el h1 de la portada; en el mapa, este h2 precede a los h3 de los paneles. */}
       <div className="escena-capa-mapa" id="mapa" inert={!enMapa}>
+        <h2 className="visually-hidden">{t('hero.mapaTitulo')}</h2>
+        <p className="visually-hidden">{t('hero.mapaAyuda')}</p>
         <Planificador activo={enMapa} onMapa={alMapa} onVistaOrbital={vistaOrbital} />
       </div>
 
@@ -155,27 +202,40 @@ export default function Escena() {
         <Globo ref={globo} interactivo={fase === 'orbita'} onElegir={iniciar} />
       </div>
 
-      <div className="escena-capa-orbita" inert={fase !== 'orbita'}>
+      <m.div className="escena-capa-orbita" inert={fase !== 'orbita'} initial="oculto" animate="visible" variants={ENTRADA}>
         <div className="orbita-texto">
-          <h1>Camina Marte con datos.</h1>
-          <p className="lead">Un mapa por capas de Jezero para planificar caminatas seguras.</p>
-          <div className="hero-cta">
-            <button type="button" className="boton primario" onClick={iniciar}>Iniciar misión</button>
-            <a href="#datos" className="boton secundario">Ver los datos</a>
-          </div>
+          <m.h1 variants={{ visible: { transition: { staggerChildren: 0.08 } } }}>
+            {t('hero.titulo').map(([texto, clase], i) => (
+              <Fragment key={`${idioma}-${i}`}>
+                <span className="palabra"><m.span className={clase} variants={PALABRA}>{texto}</m.span></span>{' '}
+              </Fragment>
+            ))}
+          </m.h1>
+          <m.p className="lead" variants={PIEZA}>{t('hero.lead')}</m.p>
+          <m.div className="hero-cta" variants={PIEZA}>
+            <button type="button" className="boton primario" onClick={iniciar} aria-busy={esperandoMapa || undefined}>
+              {esperandoMapa ? t('hero.preparando') : t('hero.iniciar')}
+            </button>
+            <a href="#datos" className="boton secundario">{t('hero.verDatos')}</a>
+          </m.div>
         </div>
-        <Telemetria />
-        <RelojMarte />
-        <a href="#mision" className="desliza">Bajar a la misión</a>
-      </div>
+        <m.div variants={PIEZA}><Telemetria /></m.div>
+        <m.div variants={PIEZA}><RelojMarte /></m.div>
+        <m.a href="#mision" className="desliza" variants={PIEZA}>{t('hero.bajar')}</m.a>
+      </m.div>
+
+      {/* Pacha llega rodando y saluda: invita a tocar el planeta. Solo existe en la órbita. */}
+      {fase === 'orbita' && (
+        <GuiaPacha className="guia-orbita" clave="orbita" tam={150} mensajes={t('pacha.orbita')} />
+      )}
 
       {(fase === 'orbita' || fase === 'descenso') && (
         <button type="button" className="boton boton-texto saltar" onClick={saltar}>
-          Saltar intro <kbd>Esc</kbd>
+          {t('hero.saltar')} <kbd>Esc</kbd>
         </button>
       )}
       <p className="visually-hidden" role="status">
-        {{ descenso: 'Descendiendo hacia Jezero.', acercamiento: 'Llegando a la zona de EVA.', mapa: 'Mapa listo.', ascenso: 'Volviendo a la órbita.' }[fase] ?? ''}
+        {['descenso', 'acercamiento', 'mapa', 'ascenso'].includes(fase) ? t(`hero.estado.${fase}`) : ''}
       </p>
     </section>
   );
@@ -183,6 +243,7 @@ export default function Escena() {
 
 // Instrumentos de la vista orbital: hora y estación en Jezero ahora mismo (Mars24) y cómo usar el globo.
 function RelojMarte() {
+  const { t: tr, idioma } = useIdioma();
   const [t, setT] = useState(null);
   useEffect(() => {
     const leer = () => setT(tiempoMarte(new Date(), JEZERO.lon));
@@ -191,13 +252,18 @@ function RelojMarte() {
     return () => clearInterval(id);
   }, []);
   return (
-    <aside className="reloj-marte" aria-label="Hora en Marte">
+    <aside className="reloj-marte" aria-label={tr('reloj.aria')}>
       <dl>
-        <div><dt>Hora en Jezero</dt><dd>{t ? `${horaTexto(t.lmst)} LMST` : 'calculando'}</dd></div>
-        <div><dt>Estación en el norte</dt><dd>{t ? `${estacion(t.ls)}, Ls ${Math.round(t.ls)}°` : 'calculando'}</dd></div>
-        <div><dt>Fecha solar de Marte</dt><dd>{t ? Math.floor(t.msd).toLocaleString('es') : 'calculando'}</dd></div>
+        <div><dt>{tr('reloj.hora')}</dt><dd>{t ? `${horaTexto(t.lmst)} LMST` : tr('reloj.calculando')}</dd></div>
+        <div><dt>{tr('reloj.estacion')}</dt><dd>{t ? `${tr(`estaciones.${estacion(t.ls)}`)}, Ls ${Math.round(t.ls)}°` : tr('reloj.calculando')}</dd></div>
+        <div><dt>{tr('reloj.fecha')}</dt><dd>{t ? Math.floor(t.msd).toLocaleString(idioma) : tr('reloj.calculando')}</dd></div>
       </dl>
-      <p>Arrastra el planeta para girarlo. Toca Jezero para descender. El lado iluminado es el de este momento.</p>
+      <p>{tr('reloj.ayuda')}</p>
     </aside>
   );
+}
+
+function iconoEtiqueta(L, id, t) {
+  const texto = String(t(`etiquetas.${id}`)).replace(/[&<>]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+  return L.divIcon({ className: `etiqueta-escala etiqueta-mapa etq-${id}`, html: texto, iconSize: null });
 }

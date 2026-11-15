@@ -1,1 +1,4 @@
 * text=auto eol=lf
+
+# Grillas del modelo de terreno (public/datos): binarias, sin conversión de finales de línea
+*.bin binary

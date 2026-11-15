@@ -10,6 +10,9 @@
 
 /* ===== Base del proyecto ===== */
 html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+/* Cielo de fondo de toda la página: tenue, para que el texto siga mandando */
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background-image: var(--estrellas); background-size: var(--estrellas-tam); opacity: 0.32; }
+.marte { color: var(--color-marte); }
 h4 { margin: 0; font-family: var(--font-body); font-size: var(--text-sm); font-weight: 600; color: var(--color-ink); }
 small { font-size: var(--text-xs); color: var(--color-muted); }
 code { font-size: 0.92em; padding: 0 var(--space-2xs); border-radius: var(--radius-card); background: var(--color-paper-3); color: var(--color-ink); }
@@ -43,7 +46,9 @@ code { font-size: 0.92em; padding: 0 var(--space-2xs); border-radius: var(--radi
   padding-inline: max(var(--gutter), calc((100% - var(--container)) / 2 + var(--gutter)));
   background: var(--color-paper); border-bottom: var(--rule-hair) solid var(--color-rule);
 }
-.logo { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; font-stretch: 70%; color: var(--color-ink); text-decoration: none; letter-spacing: var(--tracking-display); }
+.logo { display: inline-flex; align-items: center; gap: var(--space-xs); font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; font-stretch: 70%; color: var(--color-ink); text-decoration: none; letter-spacing: var(--tracking-display); }
+/* Marte en la marca: un disco óxido con su terminador, la misma luz que el globo */
+.logo::before { content: ""; width: 14px; height: 14px; border-radius: 50%; flex: none; background: radial-gradient(circle at 35% 35%, var(--color-marte) 0 55%, color-mix(in oklab, var(--color-marte) 35%, var(--color-espacio)) 100%); }
 h1, h2, h3 { font-stretch: var(--display-stretch); }
 kbd { font-family: var(--font-display); font-size: var(--text-xs); padding: 0 var(--space-2xs); border: var(--rule-hair) solid currentColor; border-radius: var(--radius-control); opacity: 0.75; }
 .nav-links { display: flex; gap: var(--space-lg); margin-left: auto; font-size: var(--text-sm); }
@@ -51,9 +56,21 @@ kbd { font-family: var(--font-display); font-size: var(--text-xs); padding: 0 va
 .nav-links a:hover { color: var(--color-ink); text-decoration: underline; text-decoration-color: var(--color-accent); }
 .logo:focus-visible, .nav-links a:focus-visible, .desliza:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 4px; }
 @media (max-width: 40rem) { .nav-links { display: none; } .nav .boton { margin-left: auto; } }
+/* Selector de idioma: ES | EN. El activo se marca con fondo, subrayado de acento y aria-pressed (no solo color). */
+.idiomas { display: inline-flex; flex: none; border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-control); overflow: hidden; }
+.idiomas button { min-width: var(--control-alto); min-height: var(--control-alto); padding: 0 var(--space-sm); border: 0; background: transparent; color: var(--color-ink-2); font-family: var(--font-display); font-size: var(--text-sm); font-weight: 600; letter-spacing: 0.04em; cursor: pointer; transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out); }
+.idiomas button + button { border-left: var(--rule-hair) solid var(--color-rule); }
+.idiomas button:hover:not(.activo) { color: var(--color-ink); background: var(--color-paper-2); }
+.idiomas button.activo { color: var(--color-ink); background: var(--color-paper-3); box-shadow: inset 0 -2px 0 var(--color-accent); }
+.idiomas button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+@media (max-width: 40rem) { .nav .idiomas { margin-left: auto; } .nav .idiomas ~ .boton { margin-left: 0; } }
 
 /* ===== Escena: el planeta que se convierte en el mapa ===== */
-.escena { --alto-escena: calc(100svh - 64px); position: relative; height: var(--alto-escena); min-height: 560px; overflow: clip; isolation: isolate; background: var(--color-paper); }
+.escena { --alto-escena: calc(100svh - 64px); position: relative; height: var(--alto-escena); min-height: 560px; overflow: clip; isolation: isolate;
+  /* Espacio profundo: un poco más claro detrás del planeta (luz dispersa), casi negro en los bordes */
+  background: radial-gradient(110% 85% at 70% 45%, oklch(17% 0.032 258) 0%, var(--color-espacio) 62%); }
+/* Estrellas lejanas fijas, detrás de las del globo (que giran despacio): dan profundidad */
+.escena::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background-image: var(--estrellas); background-size: var(--estrellas-tam); opacity: 0.5; }
 .escena-capa-mapa, .escena-capa-globo { position: absolute; inset: 0; }
 .escena-capa-mapa { z-index: 0; opacity: 1; }
 .js .escena .escena-capa-mapa { opacity: 0; transition: opacity var(--dur-fundido) var(--ease-in-out); }
@@ -62,7 +79,13 @@ kbd { font-family: var(--font-display); font-size: var(--text-xs); padding: 0 va
 .escena-orbita .escena-capa-globo { pointer-events: auto; }
 .globo-interactivo { cursor: grab; touch-action: pan-y; outline: none; }
 .globo-interactivo.arrastrando { cursor: grabbing; }
-.globo-interactivo.sobre-sitio { cursor: pointer; }
+.globo-interactivo.sobre-planeta { cursor: pointer; }
+/* Pista que sigue al puntero sobre el planeta */
+.globo-pista { position: absolute; left: 0; top: 0; z-index: 2; margin: 18px 0 0 16px; padding: var(--space-2xs) var(--space-sm); border-radius: var(--radius-control); background: var(--color-accent); color: var(--color-accent-ink); font-size: var(--text-xs); font-weight: 600; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity var(--dur-short) var(--ease-out); }
+.globo.sobre-planeta .globo-pista { opacity: 1; }
+/* Entrada atmosférica: calor en los bordes de la vista, con la intensidad que marca el globo (--entrada) */
+.globo-entrada { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: var(--entrada, 0);
+  background: radial-gradient(ellipse 72% 66% at 50% 50%, transparent 30%, color-mix(in oklab, var(--color-marte) 55%, transparent) 70%, color-mix(in oklab, oklch(90% 0.12 70) 85%, transparent) 100%); }
 .globo-interactivo:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -6px; }
 .etiqueta-nave { position: absolute; left: 0; top: 0; margin: calc(-1 * var(--space-sm)) 0 0 var(--space-sm); font-family: var(--font-display); font-stretch: 75%; font-size: var(--text-xs); color: var(--color-muted); white-space: nowrap; opacity: 0; transition: opacity var(--dur-short) var(--ease-out); pointer-events: none; }
 .escena-capa-globo.oculto { opacity: 0; }
@@ -70,7 +93,7 @@ kbd { font-family: var(--font-display); font-size: var(--text-xs); padding: 0 va
 .globo canvas { width: 100%; height: 100%; display: block; transform-origin: 50% 50%; }
 
 .escena-capa-orbita { pointer-events: none; position: absolute; inset: 0; z-index: 2; display: grid; align-content: center; gap: var(--space-lg); padding: var(--space-3xl) max(var(--gutter), calc((100% - var(--container)) / 2 + var(--gutter))); transition: opacity var(--dur-long) var(--ease-out), transform var(--dur-long) var(--ease-out); }
-.escena-capa-orbita::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, var(--color-paper) 12%, color-mix(in oklab, var(--color-paper) 60%, transparent) 40%, transparent 64%); }
+.escena-capa-orbita::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, var(--color-espacio) 10%, color-mix(in oklab, var(--color-espacio) 55%, transparent) 38%, transparent 62%); }
 .js .escena:not(.escena-orbita) .escena-capa-orbita { opacity: 0; transform: translateY(-12px); pointer-events: none; }
 .orbita-texto { display: grid; gap: var(--space-lg); justify-items: start; }
 .escena-capa-orbita > * { pointer-events: auto; justify-self: start; }
@@ -130,7 +153,7 @@ kbd { font-family: var(--font-display); font-size: var(--text-xs); padding: 0 va
 .pasos-bloque h3 { font-size: var(--text-2xl); }
 .pasos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap-columns); }
 .paso { display: grid; gap: var(--space-xs); align-content: start; padding-top: var(--space-md); border-top: var(--rule-hair) solid var(--color-rule); }
-.paso-num { font-family: var(--font-display); font-size: var(--text-3xl); line-height: 1; color: var(--color-accent); font-variant-numeric: lining-nums; }
+.paso-num { font-family: var(--font-display); font-size: var(--text-3xl); line-height: 1; color: var(--color-marte); font-variant-numeric: lining-nums; }
 .paso h4 { font-size: var(--text-lg); font-family: var(--font-display); font-weight: 400; }
 .paso p { color: var(--color-ink-2); font-size: var(--text-sm); }
 @media (max-width: 40rem) {
@@ -144,7 +167,7 @@ kbd { font-family: var(--font-display); font-size: var(--text-xs); padding: 0 va
 /* ===== Mesa de trabajo: el mapa ocupa la escena y los paneles van encima ===== */
 .mesa { --ancho-capas: 288px; --ancho-ruta: 360px; --alto-barra: 64px; --alto-estado: 40px; position: absolute; inset: 0; }
 .mesa.mesa-sin-capas { --ancho-capas: 0px; }
-.mesa:fullscreen { background: var(--color-paper); }
+.mesa:fullscreen { background: var(--color-espacio); }
 .mesa-mapa { position: absolute; inset: 0; z-index: 0; }
 .mesa-barra { position: absolute; z-index: var(--z-raised); top: 0; left: 0; right: 0; min-height: var(--alto-barra); display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-md); border-bottom: var(--rule-hair) solid var(--color-rule); background: var(--color-paper); flex-wrap: wrap; }
 .mesa-titulo { font-family: var(--font-display); font-stretch: 85%; font-weight: 600; font-size: var(--text-lg); margin-right: auto; }
@@ -154,10 +177,10 @@ kbd { font-family: var(--font-display); font-size: var(--text-xs); padding: 0 va
 .mesa-ruta { right: 0; width: var(--ancho-ruta); border-left: var(--rule-hair) solid var(--color-rule); gap: var(--space-lg); }
 .mesa-capas h3, .mesa-ruta h3 { font-size: var(--text-lg); margin-bottom: var(--space-sm); }
 .mesa-capas section { display: grid; gap: var(--space-sm); }
-.mapa { position: absolute; inset: 0; background: var(--color-paper); isolation: isolate; z-index: 0; }
+/* Fuera del planeta (bordes del mosaico global) se ve el mismo cielo que en la órbita */
+.mapa, .mapa.leaflet-container { position: absolute; inset: 0; isolation: isolate; z-index: 0; background-color: var(--color-espacio); background-image: var(--estrellas); background-size: var(--estrellas-tam); }
 .mapa.cargando, .vista-img.cargando { display: grid; place-items: center; text-align: center; padding: var(--space-lg); color: var(--color-muted); font-size: var(--text-sm); }
 .mapa.modo-planificar { cursor: crosshair; }
-.mapa-aviso { position: absolute; z-index: var(--z-raised); top: calc(var(--alto-barra) + var(--space-sm)); left: calc(var(--ancho-capas) + (100% - var(--ancho-capas) - var(--ancho-ruta)) / 2); transform: translateX(-50%); max-width: 480px; padding: var(--space-xs) var(--space-md); border-radius: var(--radius-control); background: var(--color-accent); color: var(--color-accent-ink); font-size: var(--text-sm); font-weight: 600; text-align: center; }
 .mesa-estado { position: absolute; z-index: var(--z-raised); left: 0; right: 0; bottom: 0; min-height: var(--alto-estado); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs) var(--space-xl); padding: var(--space-2xs) var(--space-md); border-top: var(--rule-hair) solid var(--color-rule); font-family: var(--font-display); font-stretch: 90%; font-size: var(--text-sm); color: var(--color-ink-2); font-variant-numeric: tabular-nums; background: var(--color-paper); }
 .estado-pend { display: inline-flex; align-items: center; gap: var(--space-xs); }
 .escala { display: inline-flex; align-items: center; gap: var(--space-xs); margin-left: auto; }
@@ -189,7 +212,7 @@ kbd { font-family: var(--font-display); font-size: var(--text-xs); padding: 0 va
   .mesa-herramientas { flex-wrap: nowrap; }
   .mesa .leaflet-bottom { bottom: 0; }
   .escala { margin-left: 0; }
-  .escena-capa-orbita::before { background: linear-gradient(0deg, var(--color-paper) 10%, color-mix(in oklab, var(--color-paper) 55%, transparent) 50%, transparent 80%); }
+  .escena-capa-orbita::before { background: linear-gradient(0deg, var(--color-espacio) 10%, color-mix(in oklab, var(--color-espacio) 55%, transparent) 50%, transparent 80%); }
   .escena-capa-orbita { align-content: end; padding-bottom: var(--space-lg); }
   .saltar { top: var(--space-md); bottom: auto; }
   .reloj-marte dl { grid-template-columns: repeat(2, max-content); row-gap: var(--space-sm); }
@@ -293,7 +316,7 @@ input[type='range']:focus-visible { outline: 2px solid var(--color-focus); outli
 /* Vista de superficie */
 .vista { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; padding: var(--space-md); background: var(--color-scrim); }
 .vista-panel { color: var(--color-ink); width: min(900px, 100%); max-height: 92vh; overflow: auto; background: var(--color-paper-2); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-card); padding: var(--space-lg); display: grid; gap: var(--space-md); }
-.vista-cab { display: flex; justify-content: space-between; align-items: start; gap: var(--space-md); }
+.vista-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-md); }
 .vista-cab h3 { font-size: var(--text-xl); margin-block: var(--space-2xs); }
 .vista-img { position: relative; display: block; border-radius: var(--radius-card); overflow: hidden; background: var(--color-paper); min-height: 280px; }
 .vista-img img { width: 100%; max-height: 60vh; object-fit: contain; display: block; }
@@ -344,5 +367,41 @@ input[type='range']:focus-visible { outline: 2px solid var(--color-focus); outli
 @media (max-width: 60rem) { .pie-cuerpo { grid-template-columns: 1fr; gap: var(--space-2xl); } }
 @media (max-width: 40rem) { .pie-columnas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
-/* Revelar: Spore no anima entradas; el contenido está visible siempre */
-.revelar { opacity: 1; }
+/* ===== Movimiento (Motion) ===== */
+/* Progreso de lectura bajo la navegación */
+.progreso { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--color-accent); transform-origin: 0 50%; pointer-events: none; }
+/* Máscara del título: cada palabra sube desde detrás de su propia línea */
+.palabra { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.1em; margin-bottom: -0.1em; }
+.palabra > span { display: inline-block; }
+/* El análisis de la ruta es un bloque que entra y sale entero */
+.ruta-analisis { display: grid; gap: var(--space-lg); }
+.alertas { position: relative; } /* popLayout: el aviso que sale se posiciona respecto de la lista */
+
+/* ===== Pacha, el rover guía (3D) ===== */
+.pacha { position: relative; display: block; flex: none; padding: 0; border: 0; background: none; border-radius: 50%; }
+.pacha-lienzo { width: 100%; height: 100%; display: block; }
+.pacha-tocable { cursor: pointer; }
+.pacha-tocable:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.pacha-sin-webgl { position: absolute; inset: 24%; border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--color-marte) 0 55%, color-mix(in oklab, var(--color-marte) 35%, var(--color-espacio)) 100%); }
+.guia-pacha { display: flex; align-items: flex-end; gap: var(--space-2xs); }
+.guia-globo { position: relative; max-width: 270px; margin-bottom: var(--space-xl); padding: var(--space-sm) var(--space-md) var(--space-2xs); border-radius: 14px 14px 14px 3px; background: var(--color-paper-2); border: var(--rule-hair) solid var(--color-rule); color: var(--color-ink); font-size: var(--text-sm); line-height: 1.45; }
+.guia-globo p { margin: 0; }
+.guia-pie { display: flex; justify-content: space-between; align-items: center; gap: var(--space-sm); min-height: var(--control-alto); }
+.guia-cuenta { font-size: var(--text-xs); color: var(--color-muted); }
+.guia-cerrar { min-height: var(--control-alto); margin-left: auto; padding: 0 var(--space-xs); border: 0; background: none; color: var(--color-ink-2); font: inherit; font-size: var(--text-xs); text-decoration: underline; text-underline-offset: 0.2em; cursor: pointer; }
+.guia-cerrar:hover { color: var(--color-ink); }
+.guia-mini { display: inline-flex; align-items: center; gap: var(--space-xs); min-height: var(--control-alto); padding: 0 var(--space-md); border: var(--rule-hair) solid var(--color-rule); border-radius: 999px; background: var(--color-paper-2); color: var(--color-ink); font: inherit; font-size: var(--text-sm); font-weight: 600; cursor: pointer; }
+.guia-mini:hover { border-color: var(--color-ink-2); }
+.guia-mini-punto { width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--color-marte) 0 55%, color-mix(in oklab, var(--color-marte) 35%, var(--color-espacio)) 100%); }
+.guia-cerrar:focus-visible, .guia-mini:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+/* En la órbita: arriba a la derecha, el globo de diálogo a la izquierda de Pacha */
+.guia-orbita { position: absolute; z-index: 3; top: var(--space-md); right: var(--space-lg); flex-direction: row-reverse; }
+.guia-orbita .guia-globo { border-radius: 14px 14px 3px 14px; }
+/* En el mapa: arriba a la izquierda del área del mapa, bajo la barra */
+.guia-mapa { position: absolute; z-index: var(--z-raised); top: calc(var(--alto-barra) + var(--space-sm)); left: calc(var(--ancho-capas) + var(--space-sm)); }
+@media (max-width: 64rem) {
+  .guia-orbita { display: none; }
+  .guia-mapa { top: var(--space-sm); left: var(--space-sm); }
+  .guia-mapa .guia-globo { max-width: 200px; }
+}
+.mapa.cargando, .vista-img.cargando { gap: var(--space-sm); align-content: center; }

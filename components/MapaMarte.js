@@ -2,10 +2,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { CAPA_GLOBAL, CAPAS_BASE, KM_POR_GRADO, JEZERO, ZOOM_FUNDIDO } from '../lib/marte';
 import { dibujarTesela, aRgb, muestrear, clasePendiente } from '../lib/terreno';
+import { useIdioma } from './Idioma';
 
 
 // Lee un token de color del CSS (las capas de Leaflet no aceptan var()).
 const token = (nombre) => getComputedStyle(document.documentElement).getPropertyValue(nombre).trim();
+
+// Tocar un punto del rover, un hito o el marcador de Perseverance: al trazar, lo suma como parada
+// (terreno ya verificado); si no, abre sus fotos. Lee el estado actual desde el ref, no el del render.
+const tocar = (plan, w) => {
+  if (plan.current.planificando) plan.current.onPunto([w.lat, w.lon]);
+  else plan.current.onWaypoint?.(w);
+};
 
 // Mapa de Marte con Leaflet en proyección equirectangular (L.CRS.EPSG4326),
 // que coincide con las teselas "EQ" de Mars Trek.
@@ -13,10 +21,14 @@ export default function MapaMarte({
   rover, ruta, planificando, capaId, opacidad, verRover, onPunto, onWaypoint,
   terreno = null, verZonas = true, verNotas = true, tramosPeligro = [], cerca = [], enfoque = null, onCursor, onMapa,
 }) {
+  const { t } = useIdioma();
   const nodo = useRef(null);
   const ref = useRef({});
-  const plan = useRef({ planificando, onPunto });
-  plan.current = { planificando, onPunto };
+  const plan = useRef({ planificando, onPunto, onWaypoint });
+  plan.current = { planificando, onPunto, onWaypoint };
+  // El mapa se crea una sola vez: el aviso de "mapa listo" se lee del ref para no recrearlo.
+  const alMapaListo = useRef(onMapa);
+  alMapaListo.current = onMapa;
   const [listo, setListo] = useState(false);
 
   // Crear el mapa una vez
@@ -30,7 +42,7 @@ export default function MapaMarte({
         crs: L.CRS.EPSG4326, center: [JEZERO.lat, JEZERO.lon], zoom: ZOOM_FUNDIDO, minZoom: 3, maxZoom: 19,
         zoomControl: false, attributionControl: true, worldCopyJump: false,
       });
-      L.control.zoom({ position: 'bottomright', zoomInTitle: 'Acercar', zoomOutTitle: 'Alejar' }).addTo(mapa);
+      L.control.zoom({ position: 'bottomright' }).addTo(mapa);
       mapa.attributionControl.setPrefix('NASA/JPL-Caltech, USGS, Univ. of Arizona, ASU');
 
       L.tileLayer(CAPA_GLOBAL.url, { maxNativeZoom: CAPA_GLOBAL.maxNativeZoom, maxZoom: 19, noWrap: true }).addTo(mapa);
@@ -49,7 +61,7 @@ export default function MapaMarte({
 
       ref.current = { L, mapa, capaZonas, capasRover, capaNotas, capaRuta, capaAvisos, base: null };
       setListo(true);
-      onMapa?.(mapa, L);
+      alMapaListo.current?.(mapa, L);
     })();
     return () => {
       cancelado = true;
@@ -58,6 +70,16 @@ export default function MapaMarte({
       setListo(false);
     };
   }, []);
+
+  // Textos del control de zoom (Leaflet los fija al crearlo): se actualizan con el idioma.
+  useEffect(() => {
+    const { mapa } = ref.current;
+    if (!mapa) return;
+    for (const [sel, clave] of [['.leaflet-control-zoom-in', 'mapa.acercar'], ['.leaflet-control-zoom-out', 'mapa.alejar']]) {
+      const boton = mapa.getContainer().querySelector(sel);
+      if (boton) { boton.title = t(clave); boton.setAttribute('aria-label', t(clave)); }
+    }
+  }, [t, listo]);
 
   // Cursor: coordenadas, elevación y pendiente del DTM bajo el puntero, y escala marciana
   useEffect(() => {
@@ -92,9 +114,9 @@ export default function MapaMarte({
       // Los mosaicos locales de Jezero no tienen niveles regionales: no pedir teselas que no existen.
       minZoom: def.bounds ? 9 : 0,
       bounds: def.bounds ? L.latLngBounds(def.bounds) : undefined,
-      opacity: opacidad, attribution: def.fuente,
+      opacity: opacidad, attribution: t(`capas.${def.id}.fuente`),
     }).addTo(mapa);
-  }, [capaId, listo]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [capaId, listo, t]); // eslint-disable-line react-hooks/exhaustive-deps -- la opacidad tiene su propio efecto
 
   useEffect(() => { ref.current.base?.setOpacity(opacidad); }, [opacidad]);
 
@@ -137,12 +159,10 @@ export default function MapaMarte({
         radius: 3.5, weight: 1, color: token('--color-paper'),
         fillColor: colores[riesgo], fillOpacity: 0.95, className: 'wp',
       })
-          .bindTooltip(`Sol ${w.sol}: inclinación ${w.tilt != null ? `${Number(w.tilt).toFixed(1)}°` : 'sin dato'}, ${w.elev ?? 'sin dato'} m`, { direction: 'top', className: 'tip-mapa' })
+          .bindTooltip(t('mapa.waypoint', { sol: w.sol, tilt: w.tilt != null ? `${Number(w.tilt).toFixed(1)}°` : t('mapa.sinDato'), elev: w.elev ?? t('mapa.sinDato') }), { direction: 'top', className: 'tip-mapa' })
         .on('click', (e) => {
           L.DomEvent.stopPropagation(e);
-          // Al trazar, tocar un punto del rover lo suma como parada (terreno ya verificado)
-          if (plan.current.planificando) plan.current.onPunto([w.lat, w.lon]);
-          else onWaypoint?.(w);
+          tocar(plan, w);
         })
         .addTo(capasRover);
     }
@@ -150,14 +170,14 @@ export default function MapaMarte({
     const primero = rover.waypoints[0];
     const ultimo = rover.waypoints.at(-1);
     if (primero) {
-      L.marker([primero.lat, primero.lon], { icon: icono(L, 'aterrizaje', 'Aterrizaje Octavia E. Butler') }).addTo(capasRover);
+      L.marker([primero.lat, primero.lon], { icon: icono(L, 'aterrizaje', t('mapa.aterrizaje')) }).addTo(capasRover);
     }
     if (ultimo) {
-      L.marker([ultimo.lat, ultimo.lon], { icon: icono(L, 'rover', `Perseverance, sol ${ultimo.sol}`) })
-        .on('click', () => onWaypoint?.(ultimo))
+      L.marker([ultimo.lat, ultimo.lon], { icon: icono(L, 'rover', t('mapa.rover', { sol: ultimo.sol })) })
+        .on('click', () => tocar(plan, ultimo))
         .addTo(capasRover);
     }
-  }, [rover, verRover, listo, onWaypoint]);
+  }, [rover, verRover, listo, t]);
 
   // Notas de la misión en el recorrido (MMGIS): hitos con nombre
   useEffect(() => {
@@ -166,11 +186,11 @@ export default function MapaMarte({
     capaNotas.clearLayers();
     if (!rover || !verNotas) return;
     for (const w of rover.waypoints.filter((x) => x.nota)) {
-      L.marker([w.lat, w.lon], { icon: icono(L, 'nota', `Sol ${w.sol}: ${w.nota}`), keyboard: false })
-        .on('click', () => onWaypoint?.(w))
+      L.marker([w.lat, w.lon], { icon: icono(L, 'nota', t('mapa.nota', { sol: w.sol, nota: w.nota })), keyboard: false })
+        .on('click', () => tocar(plan, w))
         .addTo(capaNotas);
     }
-  }, [rover, verNotas, listo, onWaypoint]);
+  }, [rover, verNotas, listo, t]);
 
   // Ruta de la EVA trazada por el usuario
   useEffect(() => {
@@ -183,10 +203,10 @@ export default function MapaMarte({
     }
     ruta.forEach((p, i) => {
       const tipo = i === 0 ? 'habitat' : 'parada';
-      const texto = i === 0 ? 'Hábitat, punto de salida' : `Parada ${i}`;
+      const texto = i === 0 ? t('mapa.habitat') : t('mapa.parada', { i });
       L.marker(p, { icon: icono(L, tipo, texto, i === 0 ? 'H' : String(i)) }).addTo(capaRuta);
     });
-  }, [ruta, listo]);
+  }, [ruta, listo, t]);
 
   // Tramos no seguros que cruza la ruta y peligros cercanos
   useEffect(() => {
@@ -198,10 +218,10 @@ export default function MapaMarte({
     }
     for (const c of cerca) {
       L.circleMarker([c.lat, c.lon], { radius: 6, weight: 2, dashArray: '3 3', color: token('--color-zona-peligro'), fillOpacity: 0 })
-        .bindTooltip(`Pendiente de ${c.pendiente.toFixed(0)}° a ${Math.round(c.distM)} m de la ruta`, { className: 'tip-mapa' })
+        .bindTooltip(t('mapa.cerca', { g: c.pendiente.toFixed(0), m: Math.round(c.distM) }), { className: 'tip-mapa' })
         .addTo(capaAvisos);
     }
-  }, [tramosPeligro, cerca, listo]);
+  }, [tramosPeligro, cerca, listo, t]);
 
   // Centrar el mapa en un punto pedido desde el panel
   useEffect(() => {
@@ -220,7 +240,7 @@ export default function MapaMarte({
     return () => mapa.off('click', alClic);
   }, [planificando, onPunto, listo]);
 
-  return <div ref={nodo} className="mapa" role="application" aria-label="Mapa del cráter Jezero" />;
+  return <div ref={nodo} className="mapa" role="application" aria-label={t('mapa.aria')} />;
 }
 
 // Los textos vienen de fuentes externas (notas de MMGIS): se escapan antes de ir al HTML.

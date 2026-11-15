@@ -1,19 +1,21 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { m } from 'motion/react';
+import { CURVA } from './Proveedores';
 
-// Aparece con animación al entrar en pantalla (respeta prefers-reduced-motion vía CSS).
-export default function Revelar({ children, como: Etiqueta = 'div', retraso = 0, className = '', ...resto }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const el = ref.current;
-    const io = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting) { el.classList.add('visible'); io.disconnect(); }
-    }, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
+// Aparece al entrar en pantalla, una sola vez. Con "reducir movimiento" solo se desvanece.
+const ETIQUETAS = { div: m.div, li: m.li, section: m.section, tr: m.tr };
+
+export default function Revelar({ children, como = 'div', retraso = 0, className = '', ...resto }) {
+  const Etiqueta = ETIQUETAS[como] ?? m.div;
   return (
-    <Etiqueta ref={ref} className={`revelar ${className}`} style={{ '--retraso': `${retraso}ms` }} {...resto}>
+    <Etiqueta
+      className={`revelar ${className}`}
+      initial={{ opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2, margin: '0px 0px -8% 0px' }}
+      transition={{ duration: 0.7, delay: retraso / 1000, ease: CURVA }}
+      {...resto}
+    >
       {children}
     </Etiqueta>
   );

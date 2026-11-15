@@ -48,7 +48,11 @@ async function main() {
   console.log(`DTM ${ancho}×${alto} px, celda ${rx.toFixed(1)} m, radio ${radio} m, sin dato ${nd}`);
 
   const [z] = await img.readRasters({ interleave: false });
-  const pend = pendienteHorn(z, ancho, alto, Math.abs(rx), Math.abs(ry), esSinDato);
+  // Eqc con latTs=0: cada píxel mide |rx| m en el ecuador, pero solo |rx|·cos(lat) m sobre el terreno.
+  // Sin esta corrección la pendiente este-oeste saldría ~5 % más baja en Jezero (el lado peligroso).
+  const latFila = (f) => mAGrados(y0 + ry * (f + 0.5), radio);
+  const celdaX = (f) => Math.abs(rx) * Math.cos((latFila(f) * Math.PI) / 180);
+  const pend = pendienteHorn(z, ancho, alto, celdaX, Math.abs(ry), esSinDato);
   const red = reducir(pend, z, ancho, alto, REDUCCION, esSinDato);
 
   const oeste = mAGrados(x0, radio), norte = mAGrados(y0, radio);

@@ -1,22 +1,26 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { JEZERO } from '../lib/marte';
+import { obtenerRover } from '../lib/rover-cliente';
+import { useIdioma } from './Idioma';
 
 // Cifras vivas para el hero, con conteo animado.
 export default function Telemetria() {
+  const { t } = useIdioma();
   const [d, setD] = useState(null);
-  useEffect(() => { fetch('/api/rover').then((r) => r.json()).then((j) => !j.error && setD(j)).catch(() => {}); }, []);
+  useEffect(() => { obtenerRover().then(setD).catch(() => {}); }, []);
   const items = [
-    { etq: 'Sitio', val: 'Cráter Jezero', fijo: true },
-    { etq: 'Coordenadas', val: '18.44°N 77.45°E', fijo: true },
-    { etq: 'Sol actual del rover', val: d?.solActual },
-    { etq: 'Km recorridos por Perseverance', val: d?.distanciaTotalKm, dec: 2 },
+    { id: 'sitio', etq: t('telemetria.sitio'), val: t('telemetria.sitioValor'), fijo: true },
+    { id: 'coord', etq: t('telemetria.coordenadas'), val: `${JEZERO.lat.toFixed(2)}°N ${JEZERO.lon.toFixed(2)}°E`, fijo: true },
+    { id: 'sol', etq: t('telemetria.sol'), val: d?.solActual },
+    { id: 'km', etq: t('telemetria.km'), val: d?.distanciaTotalKm, dec: 2 },
   ];
   return (
     <dl className="telemetria">
       {items.map((it) => (
-        <div key={it.etq}>
+        <div key={it.id}>
           <dt>{it.etq}</dt>
-          <dd>{it.fijo ? it.val : it.val == null ? 'cargando' : <Contador valor={Number(it.val)} dec={it.dec ?? 0} />}</dd>
+          <dd>{it.fijo ? it.val : it.val == null ? t('telemetria.cargando') : <Contador valor={Number(it.val)} dec={it.dec ?? 0} />}</dd>
         </div>
       ))}
     </dl>
