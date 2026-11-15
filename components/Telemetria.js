@@ -1,13 +1,15 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { JEZERO } from '../lib/marte';
+import { obtenerRover } from '../lib/rover';
 
 // Cifras vivas para el hero, con conteo animado.
 export default function Telemetria() {
   const [d, setD] = useState(null);
-  useEffect(() => { fetch('/api/rover').then((r) => r.json()).then((j) => !j.error && setD(j)).catch(() => {}); }, []);
+  useEffect(() => { obtenerRover().then((j) => !j.error && setD(j)).catch(() => {}); }, []);
   const items = [
     { etq: 'Sitio', val: 'Cráter Jezero', fijo: true },
-    { etq: 'Coordenadas', val: '18.44°N 77.45°E', fijo: true },
+    { etq: 'Coordenadas', val: `${JEZERO.lat.toFixed(2)}°N ${JEZERO.lon.toFixed(2)}°E`, fijo: true },
     { etq: 'Sol actual del rover', val: d?.solActual },
     { etq: 'Km recorridos por Perseverance', val: d?.distanciaTotalKm, dec: 2 },
   ];

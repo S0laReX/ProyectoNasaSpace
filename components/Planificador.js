@@ -2,6 +2,7 @@
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CAPAS_BASE, EVA, analizarRuta, formatoHoras } from '../lib/marte';
+import { obtenerRover } from '../lib/rover';
 import Perfil from './Perfil';
 import VistaSuperficie from './VistaSuperficie';
 import Clima from './Clima';
@@ -23,8 +24,7 @@ export default function Planificador() {
   const [waypoint, setWaypoint] = useState(null);
 
   useEffect(() => {
-    fetch('/api/rover')
-      .then((r) => r.json())
+    obtenerRover()
       .then((j) => (j.error ? setErrorRover(j.error) : setRover(j)))
       .catch(() => setErrorRover('Sin conexión con la telemetría del rover'));
   }, []);

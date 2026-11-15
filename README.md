@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# ProyectoNasaSpace
-=======
 # MARSWALK · Guía de supervivencia en Jezero
 
 **NASA Space Apps Challenge 2026 · Interplanetary Survival Guide: Martian Map** (nivel intermedio)
@@ -75,4 +72,3 @@ lib/marte.js              capas, supuestos de EVA y cálculos (Marte R = 3389,5 
 
 NASA/JPL-Caltech · NASA Solar System Treks · Univ. of Arizona (HiRISE) · ASU (THEMIS) · MSSS (CTX) ·
 CAB (MEDA) · SwRI (RAD). Proyecto independiente, sin respaldo oficial de NASA.
->>>>>>> origin/Hugo
