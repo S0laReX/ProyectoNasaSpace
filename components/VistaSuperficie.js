@@ -27,20 +27,20 @@ export default function VistaSuperficie({ waypoint, onCerrar }) {
       <div className="vista-panel">
         <header className="vista-cab">
           <div>
-            <span className="etiqueta-dato">PUNTO DE VISTA · SOL {waypoint.sol}</span>
-            <h3>{waypoint.lat.toFixed(5)}°N {waypoint.lon.toFixed(5)}°E</h3>
-            <p className="texto-2">Elevación {waypoint.elev ?? '—'} m · inclinación del rover {waypoint.tilt ?? '—'}°</p>
+            <p className="nota">Punto de vista del sol {waypoint.sol}{waypoint.nota ? `: ${waypoint.nota}` : ''}</p>
+            <h3>{waypoint.lat.toFixed(5)}° N, {waypoint.lon.toFixed(5)}° E</h3>
+            <p className="nota">Elevación {waypoint.elev ?? 'sin dato'} m, inclinación del rover {waypoint.tilt != null ? `${Number(waypoint.tilt).toFixed(1)}°` : 'sin dato'}</p>
           </div>
-          <button type="button" className="boton" onClick={onCerrar} aria-label="Cerrar">✕</button>
+          <button type="button" className="boton secundario" onClick={onCerrar}>Cerrar</button>
         </header>
-        {!datos && <div className="vista-img cargando"><span className="radar" />Buscando imágenes del sol {waypoint.sol}…</div>}
-        {datos && !img && <div className="vista-img cargando">No hay imágenes públicas de ese sol.</div>}
+        {!datos && <div className="vista-img cargando">Buscando imágenes del sol {waypoint.sol}…</div>}
+        {datos && !img && <div className="vista-img cargando">No hay imágenes públicas de ese sol. Prueba con otro punto del recorrido.</div>}
         {img && (
           <>
             <a className="vista-img" href={img.grande} target="_blank" rel="noreferrer">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img key={img.url} src={img.url} alt={img.titulo} />
-              <span className="vista-pie">{img.camara} · {img.fecha?.slice(0, 16).replace('T', ' ')} UTC</span>
+              <span className="vista-pie">{img.camara}, {img.fecha?.slice(0, 16).replace('T', ' ')} UTC</span>
             </a>
             <div className="miniaturas">
               {datos.imagenes.map((m, i) => (
@@ -52,7 +52,7 @@ export default function VistaSuperficie({ waypoint, onCerrar }) {
             </div>
           </>
         )}
-        <p className="texto-2 pequeno">Imágenes raw: NASA/JPL-Caltech.</p>
+        <p className="nota">Imágenes raw: NASA/JPL-Caltech.</p>
       </div>
     </div>
   );

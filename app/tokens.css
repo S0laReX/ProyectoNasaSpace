@@ -1,0 +1,38 @@
+/* Marswalk: consola de campo. Neutros teñidos de óxido (tono 45), un acento azul de carta, tríada de seguridad validada para daltonismo. */
+:root {
+  color-scheme: dark;
+  /* Espaciado, base 4 px */
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 32px; --space-2xl: 48px; --space-3xl: 64px; --space-4xl: 96px;
+  /* Tipo: escala fija 1.2 para la interfaz; titulares fluidos solo en las secciones de lectura */
+  --text-xs: 0.8125rem; --text-sm: 0.9375rem; --text-md: 1rem; --text-lg: 1.125rem; --text-xl: 1.375rem; --text-2xl: 1.625rem; --text-3xl: 2rem;
+  --text-display-s: clamp(2rem, 2.5vw + 1rem, 3rem); --text-display: clamp(2.5rem, 3.5vw + 1rem, 4.25rem);
+  --text-section: clamp(1.75rem, 1.6vw + 1rem, 2.75rem); --text-title: clamp(1.125rem, 0.5vw + 0.9rem, 1.375rem); --text-lead: clamp(1.0625rem, 0.3vw + 1rem, 1.25rem);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms; --dur-fundido: 600ms;
+  --container: 1440px; --gutter: 64px; --gap-columns: 32px; --section-gap-s: 112px; --section-gap: 144px; --section-gap-l: 176px;
+  --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
+  /* Superficies */
+  --color-paper: oklch(17% 0.012 45);   /* fondo de consola */
+  --color-paper-2: oklch(21% 0.014 45); /* paneles */
+  --color-paper-3: oklch(25% 0.016 45); /* selección, fichas */
+  --color-rule: oklch(34% 0.018 45);
+  --color-rule-2: oklch(28% 0.016 45);
+  /* Tinta */
+  --color-ink: oklch(93% 0.012 70); --color-ink-2: oklch(84% 0.014 65); --color-muted: oklch(74% 0.018 60);
+  /* Acento único: acción principal, selección y foco */
+  --color-accent: oklch(78% 0.08 250); --color-accent-2: oklch(86% 0.055 250); --color-accent-ink: oklch(17% 0.012 45); --color-focus: oklch(86% 0.055 250);
+  --color-error: oklch(70% 0.17 22); --color-success: oklch(72% 0.12 165);
+  --font-display: var(--f-archivo, "Archivo"), ui-sans-serif, sans-serif;
+  --font-body: "Atkinson Hyperlegible Next", var(--f-archivo, "Archivo"), ui-sans-serif, sans-serif;
+  --font-outlier: var(--f-archivo, "Archivo"), ui-sans-serif, sans-serif;
+  --radius-card: 2px; --radius-control: 2px; --radius-pill: 2px; --rule-hair: 1px;
+  --shadow-card: none;
+  --tracking-display: -0.005em; --display-weight: 600; --display-stretch: 82%;
+  --control-alto: 48px; /* uso con guantes */
+  --grain: 0;
+  /* Seguridad (datos, no decoración). Siempre acompañados de trama, icono y texto. ΔE mínimo en daltonismo: 9.4 */
+  --color-zona-seguro: oklch(66% 0.12 165); --color-zona-precaucion: oklch(66% 0.15 72); --color-zona-peligro: oklch(58% 0.2 22); --color-zona-sd: oklch(56% 0.02 50);
+  --color-ruta: oklch(97% 0.01 80); --color-ruta-casing: oklch(12% 0.008 45); --color-rover: oklch(74% 0.018 60);
+  --color-scrim: oklch(17% 0.012 45 / 0.88);
+}

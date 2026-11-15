@@ -22,6 +22,7 @@ export async function GET() {
           elev: p.elev_geoid > -9000 ? Math.round(p.elev_geoid * 10) / 10 : null,
           tilt: p.tilt != null ? Math.round(p.tilt * 10) / 10 : null,
           distTotalKm: p.dist_km ?? null,
+          nota: typeof p.Note === 'string' && p.Note.trim() ? p.Note.trim() : null,
         };
       })
       .filter((w) => Number.isFinite(w.lat) && Number.isFinite(w.lon));

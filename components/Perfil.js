@@ -1,12 +1,13 @@
 'use client';
 import { useState } from 'react';
 
-// Perfil de elevación de la ruta, estimado con la elevación de los waypoints del rover más cercanos.
+// Perfil de elevación de la ruta. Con modelo de terreno usa la elevación del DTM CTX y
+// colorea cada tramo según su pendiente; sin él, la elevación de los waypoints del rover.
 const AN = 360;
-const AL = 120;
-const M = { i: 38, d: 8, s: 10, b: 22 };
+const AL = 128;
+const M = { i: 40, d: 8, s: 10, b: 22 };
 
-export default function Perfil({ perfil }) {
+export default function Perfil({ perfil, conTerreno = false }) {
   const [hover, setHover] = useState(null);
   const pts = perfil.filter((p) => p.elev != null);
   if (pts.length < 2) return null;
@@ -20,44 +21,51 @@ export default function Perfil({ perfil }) {
   const linea = pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.km).toFixed(1)},${y(p.elev).toFixed(1)}`).join(' ');
   const area = `${linea} L${x(pts.at(-1).km)},${AL - M.b} L${x(pts[0].km)},${AL - M.b} Z`;
 
+  // Tramos consecutivos de la misma clase, para colorear la línea
+  const tramos = [];
+  if (conTerreno) {
+    for (let i = 1; i < pts.length; i++) {
+      const k = pts[i].clase ?? 'sd';
+      const ult = tramos.at(-1);
+      if (ult && ult.k === k) ult.d += ` L${x(pts[i].km).toFixed(1)},${y(pts[i].elev).toFixed(1)}`;
+      else tramos.push({ k, d: `M${x(pts[i - 1].km).toFixed(1)},${y(pts[i - 1].elev).toFixed(1)} L${x(pts[i].km).toFixed(1)},${y(pts[i].elev).toFixed(1)}` });
+    }
+  }
+
   return (
     <figure className="perfil">
-      <figcaption>Perfil de elevación <span className="texto-2">(m, referencia del rover)</span></figcaption>
+      <figcaption>Perfil de elevación <span className="nota">en metros, {conTerreno ? 'modelo de terreno CTX' : 'referencia del rover'}</span></figcaption>
       <div className="perfil-lienzo">
-        <svg viewBox={`0 0 ${AN} ${AL}`} role="img" aria-label={`Elevación entre ${eMin.toFixed(0)} y ${eMax.toFixed(0)} m`}
+        <svg viewBox={`0 0 ${AN} ${AL}`} role="img" aria-label={`Elevación entre ${eMin.toFixed(0)} y ${eMax.toFixed(0)} m a lo largo de ${kmMax.toFixed(2)} km`}
           onMouseLeave={() => setHover(null)}
           onMouseMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
-            const km = (((e.clientX - r.left) / r.width) * AN - M.i) / (AN - M.i - M.d) * kmMax;
+            const km = ((((e.clientX - r.left) / r.width) * AN - M.i) / (AN - M.i - M.d)) * kmMax;
             setHover(pts.reduce((a, b) => (Math.abs(b.km - km) < Math.abs(a.km - km) ? b : a)));
           }}>
-          <defs>
-            <linearGradient id="grad-perfil" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0" stopColor="var(--marte)" stopOpacity="0.45" />
-              <stop offset="1" stopColor="var(--marte)" stopOpacity="0" />
-            </linearGradient>
-          </defs>
           {[eMin, eMin + rango / 2, eMin + rango].map((v) => (
             <g key={v}>
               <line x1={M.i} x2={AN - M.d} y1={y(v)} y2={y(v)} className="grid" />
-              <text x={M.i - 4} y={y(v) + 3} textAnchor="end" className="eje">{Math.round(v)}</text>
+              <text x={M.i - 6} y={y(v) + 3} textAnchor="end" className="eje">{Math.round(v)}</text>
             </g>
           ))}
           <text x={M.i} y={AL - 6} className="eje">0</text>
           <text x={AN - M.d} y={AL - 6} textAnchor="end" className="eje">{kmMax.toFixed(2)} km</text>
-          <path d={area} fill="url(#grad-perfil)" />
-          <path d={linea} fill="none" stroke="var(--marte)" strokeWidth="2" />
+          <path d={area} className="perfil-area" />
+          {conTerreno
+            ? tramos.map((t, i) => <path key={i} d={t.d} className={`perfil-linea trazo-${t.k}`} />)
+            : <path d={linea} className="perfil-linea" />}
           {hover && (
             <g>
               <line x1={x(hover.km)} x2={x(hover.km)} y1={M.s} y2={AL - M.b} className="cruz" />
-              <circle cx={x(hover.km)} cy={y(hover.elev)} r="4" fill="var(--marte)" stroke="var(--fondo)" strokeWidth="2" />
+              <circle cx={x(hover.km)} cy={y(hover.elev)} r="4" className="perfil-punto" />
             </g>
           )}
         </svg>
         {hover && (
           <div className="tooltip" style={{ left: `${(x(hover.km) / AN) * 100}%` }}>
-            <b>{hover.km.toFixed(2)} km</b> · {hover.elev.toFixed(0)} m
-            {hover.pendiente != null && <div>Inclinación {hover.pendiente.toFixed(1)}°</div>}
+            <b>{hover.km.toFixed(2)} km</b>, {hover.elev.toFixed(0)} m
+            {hover.pendiente != null && <div>Pendiente {hover.pendiente.toFixed(1)}°</div>}
           </div>
         )}
       </div>

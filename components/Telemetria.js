@@ -16,7 +16,7 @@ export default function Telemetria() {
       {items.map((it) => (
         <div key={it.etq}>
           <dt>{it.etq}</dt>
-          <dd>{it.fijo ? it.val : it.val == null ? '···' : <Contador valor={Number(it.val)} dec={it.dec ?? 0} />}</dd>
+          <dd>{it.fijo ? it.val : it.val == null ? 'cargando' : <Contador valor={Number(it.val)} dec={it.dec ?? 0} />}</dd>
         </div>
       ))}
     </dl>
